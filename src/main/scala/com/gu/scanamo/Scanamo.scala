@@ -1,9 +1,9 @@
 package com.gu.scanamo
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
-import com.amazonaws.services.dynamodbv2.model.{BatchWriteItemResult, DeleteItemResult, PutItemResult}
+import com.amazonaws.services.dynamodbv2.model.{ BatchWriteItemResult, DeleteItemResult, PutItemResult, QueryRequest }
 import com.gu.scanamo.error.DynamoReadError
-import com.gu.scanamo.ops.{ScanamoInterpreters, ScanamoOps}
+import com.gu.scanamo.ops.{ ScanamoInterpreters, ScanamoOps }
 import com.gu.scanamo.query._
 import com.gu.scanamo.update.UpdateExpression
 
@@ -391,9 +391,9 @@ object Scanamo {
     * List(Right(Transport(Underground,Central)))
     * }}}
     */
-  def queryWithLimit[T: DynamoFormat](client: AmazonDynamoDB)(tableName: String)(query: Query[_], limit: Int)
+  def queryWithLimit[T: DynamoFormat](client: AmazonDynamoDB)(tableName: String)(query: Query[_], limit: Int, queryRequest: QueryRequest = new QueryRequest())
   : List[Either[DynamoReadError, T]] =
-    exec(client)(ScanamoFree.queryWithLimit(tableName)(query, limit))
+    exec(client)(ScanamoFree.queryWithLimit(tableName)(query, limit, queryRequest))
 
   /**
     * Query a table using a secondary index
