@@ -368,9 +368,9 @@ object Scanamo {
     * List(Right(Animal(Pig,2)), Right(Animal(Pig,1)))
     * }}}
     */
-  def query[T: DynamoFormat](client: AmazonDynamoDB)(tableName: String)(query: Query[_])
+  def query[T: DynamoFormat](client: AmazonDynamoDB)(tableName: String)(query: Query[_], queryRequest: QueryRequest = new QueryRequest())
     : List[Either[DynamoReadError, T]] =
-    exec(client)(ScanamoFree.query(tableName)(query))
+    exec(client)(ScanamoFree.query(tableName)(query, queryRequest))
 
   /**
     * Perform a query against a table returning up to `limit` items
