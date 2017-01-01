@@ -262,6 +262,18 @@ object DynamoFormat extends DerivedDynamoFormat {
       _.map(f.write).asJava
     )(javaListFormat)
 
+  /**
+    * {{{
+    * prop> (l: Array[String]) =>
+    *     | DynamoFormat[Array[String]].read(DynamoFormat[Array[String]].write(l)) ==
+    *     |   Right(l)
+    * }}}
+    */
+  implicit def arrayFormat[T:ClassTag](implicit f: DynamoFormat[T]): DynamoFormat[Array[T]] =
+    xmap[Array[T], java.util.List[AttributeValue]](
+      _.asScala.toList.traverseU(f.read).map(_.toArray))(
+      _.map(f.write).toList.asJava
+    )(javaListFormat)
 
   private val javaNumSetFormat = attribute(_.getNS, "NS")(_.withNS)
   private val javaStringSetFormat = attribute(_.getSS, "SS")(_.withSS)
