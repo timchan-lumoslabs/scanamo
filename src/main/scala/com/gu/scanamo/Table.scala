@@ -198,6 +198,41 @@ case class Table[V: DynamoFormat](name: String) {
   def limit(n: Int) = TableLimit(this, n)
 
   /**
+    * Perform strongly consistent (http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html)
+    * read operations against this table. Note that there is no equivalent on
+    * table indexes as consistent reads from secondary indexes are not
+    * supported by DynamoDB
+    *
+    * {{{
+    * >>> case class City(country: String, name: String)
+    * >>> val cityTable = Table[City]("cities")
+    *
+    * >>> import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType._
+    * >>> val client = LocalDynamoDB.client()
+    * >>> val (get, scan, query) = LocalDynamoDB.withTable(client)("cities")('country -> S, 'name -> S) {
+    * ...   import com.gu.scanamo.syntax._
+    * ...   val ops = for {
+    * ...     putRes <- cityTable.putAll(Set(
+    * ...       City("US", "Nashville"), City("IT", "Rome"), City("IT", "Siena"), City("TZ", "Dar es Salaam")))
+    * ...     get <- cityTable.consistently.get('country -> "US" and 'name -> "Nashville")
+    * ...     scan <- cityTable.consistently.scan()
+    * ...     query <- cityTable.consistently.query('country -> "IT")
+    * ...   } yield (get, scan, query)
+    * ...   Scanamo.exec(client)(ops)
+    * ... }
+    * >>> get
+    * Some(Right(City(US,Nashville)))
+    *
+    * >>> scan
+    * List(Right(City(US,Nashville)), Right(City(IT,Rome)), Right(City(IT,Siena)), Right(City(TZ,Dar es Salaam)))
+    *
+    * >>> query
+    * List(Right(City(IT,Rome)), Right(City(IT,Siena)))
+    * }}}
+    */
+  def consistently = ConsistentlyReadTable(this)
+
+  /**
     * Performs the chained operation, `put` if the condition is met
     *
     * {{{
@@ -434,6 +469,11 @@ private[scanamo] case class IndexLimit[V: DynamoFormat](index: Index[V], limit: 
   def scan() = Scannable.limitedIndexScannable[V].scan(this)
   def query(query: Query[_]) = Queryable.limitedIndexQueryable[V].query(this)(query: Query[_])
 }
+private[scanamo] case class ConsistentlyReadTable[V: DynamoFormat](table: Table[V]) {
+  def get(key: UniqueKey[_]) = Gettable.consistentGettable[V].get(this)(key: UniqueKey[_])
+  def scan() = Scannable.consistentTableScannable[V].scan(this)
+  def query(query: Query[_]) = Queryable.consistentTableQueryable[V].query(this)(query: Query[_])
+}
 
 /* typeclass */trait Scannable[T[_], V] {
   def scan(t: T[V])(): ScanamoOps[List[Either[DynamoReadError, V]]]
@@ -472,6 +512,11 @@ object Scannable {
     override def scan(i: IndexLimit[V])(): ScanamoOps[List[Either[DynamoReadError, V]]] =
       ScanamoFree.scanIndexWithLimit[V](i.index.tableName, i.index.indexName, i.limit)
   }
+
+  implicit def consistentTableScannable[V: DynamoFormat]() = new Scannable[ConsistentlyReadTable, V] {
+    override def scan(t: ConsistentlyReadTable[V])(): ScanamoOps[List[Either[DynamoReadError, V]]] =
+      ScanamoFree.scanConsistent[V](t.table.name)
+  }
 }
 
 /* typeclass */ trait Queryable[T[_], V] {
@@ -509,5 +554,22 @@ object Queryable {
   implicit def limitedIndexQueryable[V: DynamoFormat] = new Queryable[IndexLimit, V] {
     override def query(i: IndexLimit[V])(query: Query[_]): ScanamoOps[List[Either[DynamoReadError, V]]] =
       ScanamoFree.queryIndexWithLimit[V](i.index.tableName, i.index.indexName)(query, i.limit)
+  }
+  implicit def consistentTableQueryable[V: DynamoFormat] = new Queryable[ConsistentlyReadTable, V] {
+    override def query(t: ConsistentlyReadTable[V])(query: Query[_]): ScanamoOps[List[Either[DynamoReadError, V]]] =
+      ScanamoFree.queryConsistent[V](t.table.name)(query)
+  }
+}
+
+/* typeclass */ trait Gettable[T[_], V]{
+  def get(t: T[V])(key: UniqueKey[_]): ScanamoOps[Option[Either[DynamoReadError, V]]]
+}
+
+object Gettable {
+  def apply[T[_], V](implicit s: Gettable[T, V]) = s
+
+  implicit def consistentGettable[V: DynamoFormat] = new Gettable[ConsistentlyReadTable, V] {
+    override def get(t: ConsistentlyReadTable[V])(key: UniqueKey[_]): ScanamoOps[Option[Either[DynamoReadError, V]]] =
+      ScanamoFree.getWithConsistency[V](t.table.name)(key)
   }
 }

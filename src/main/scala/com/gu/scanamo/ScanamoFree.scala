@@ -48,6 +48,14 @@ object ScanamoFree {
     } yield
       Option(res.getItem).map(read[T])
 
+  def getWithConsistency[T](tableName: String)(key: UniqueKey[_])
+            (implicit ft: DynamoFormat[T]): ScanamoOps[Option[Either[DynamoReadError, T]]] =
+    for {
+      res <- ScanamoOps.get(new GetItemRequest().withTableName(tableName).withKey(key.asAVMap.asJava).withConsistentRead(true))
+    } yield
+      Option(res.getItem).map(read[T])
+
+
   def getAll[T: DynamoFormat](tableName: String)(keys: UniqueKeys[_]): ScanamoOps[Set[Either[DynamoReadError, T]]] = {
     for {
       res <- ScanamoOps.batchGet(
@@ -65,6 +73,9 @@ object ScanamoFree {
   def scan[T: DynamoFormat](tableName: String): ScanamoOps[List[Either[DynamoReadError, T]]] =
     ScanResultStream.stream[T](new ScanRequest().withTableName(tableName))
 
+  def scanConsistent[T: DynamoFormat](tableName: String): ScanamoOps[List[Either[DynamoReadError, T]]] =
+    ScanResultStream.stream[T](new ScanRequest().withTableName(tableName).withConsistentRead(true))
+
   def scanWithLimit[T: DynamoFormat](tableName: String, limit: Int): ScanamoOps[List[Either[DynamoReadError, T]]] =
     ScanResultStream.stream[T](new ScanRequest().withTableName(tableName).withLimit(limit))
 
@@ -77,6 +88,11 @@ object ScanamoFree {
   def query[T: DynamoFormat](tableName: String)(query: Query[_], queryRequest: QueryRequest = new QueryRequest()): ScanamoOps[List[Either[DynamoReadError, T]]] =
     QueryResultStream.stream[T](query(queryRequest.withTableName(tableName)))
 
+  def queryConsistent[T: DynamoFormat](tableName: String)(query: Query[_]): ScanamoOps[List[Either[DynamoReadError, T]]] =
+    QueryResultStream.stream[T](query(new QueryRequest().withTableName(tableName).withConsistentRead(true)))
+
+  def queryWithLimit[T: DynamoFormat](tableName: String)(query: Query[_], limit: Int): ScanamoOps[List[Either[DynamoReadError, T]]] =
+    QueryResultStream.stream[T](query(new QueryRequest().withTableName(tableName)).withLimit(limit))
   def queryWithLimit[T: DynamoFormat](tableName: String)(query: Query[_], limit: Int, queryRequest: QueryRequest = new QueryRequest()): ScanamoOps[List[Either[DynamoReadError, T]]] =
     QueryResultStream.stream[T](query(queryRequest.withTableName(tableName)).withLimit(limit))
 
