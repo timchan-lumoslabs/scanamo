@@ -90,11 +90,9 @@ object ScanamoFree {
 
   def queryWithLimit[T: DynamoFormat](tableName: String)(query: Query[_], limit: Int, queryRequest: QueryRequest = new QueryRequest()): ScanamoOps[List[Either[DynamoReadError, T]]] =
     QueryResultStream.stream[T](query(queryRequest.withTableName(tableName)).withLimit(limit))
+
   def queryConsistent[T: DynamoFormat](tableName: String)(query: Query[_]): ScanamoOps[List[Either[DynamoReadError, T]]] =
     QueryResultStream.stream[T](query(new QueryRequest().withTableName(tableName).withConsistentRead(true)))
-
-  def queryWithLimit[T: DynamoFormat](tableName: String)(query: Query[_], limit: Int): ScanamoOps[List[Either[DynamoReadError, T]]] =
-    QueryResultStream.stream[T](query(new QueryRequest().withTableName(tableName)).withLimit(limit))
 
   def queryIndex[T: DynamoFormat](tableName: String, indexName: String)(query: Query[_]): ScanamoOps[List[Either[DynamoReadError, T]]] =
     QueryResultStream.stream[T](query(new QueryRequest().withTableName(tableName)).withIndexName(indexName))
