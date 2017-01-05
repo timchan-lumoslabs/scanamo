@@ -12,7 +12,7 @@ Installation
 
 ```scala
 libraryDependencies ++= Seq(
-  "com.gu" %% "scanamo" % "0.8.1"
+  "com.gu" %% "scanamo" % "0.8.2"
 )
 ```
 
@@ -69,7 +69,7 @@ scala> import cats.syntax.either._
 
 scala> val client = LocalDynamoDB.client()
 scala> import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType._
-scala> val farmersTableResult = LocalDynamoDB.createTable(client)("winners")('name -> S)
+scala> val winnersTableResult = LocalDynamoDB.createTable(client)("winners")('name -> S)
 
 scala> case class LuckyWinner(name: String, shape: String)
 scala> def temptWithGum(child: LuckyWinner): LuckyWinner = child match {
