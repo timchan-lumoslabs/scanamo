@@ -43,6 +43,8 @@ scalacOptions := Seq(
   "-Ywarn-value-discard"
 )
 
+assemblyShadeRules in assembly := Seq(ShadeRule.rename("shapeless.**" -> "shapeless_shaded.@1").inAll)
+
 dynamoDBLocalDownloadDir := file(".dynamodb-local")
 dynamoDBLocalPort := 8042
 startDynamoDBLocal := startDynamoDBLocal.dependsOn(compile in Test).value
@@ -86,7 +88,7 @@ pomExtra := {
   </developers>
 }
 
-import ReleaseTransformations._
+import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
 releaseCrossBuild := true
 
